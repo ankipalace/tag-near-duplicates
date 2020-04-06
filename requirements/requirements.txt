@@ -1,0 +1,4 @@
+pandas
+fuzzywuzzy
+beautifulsoup
+click

@@ -5,25 +5,21 @@ import string
 
 import click
 
-import pandas as pd
-
 from fuzzywuzzy import fuzz, process
+
+from util import read_notes
 
 RD = random.Random()
 RD.seed(0)
-# TODO: Exclude from potential duplicates notes that only differ by one word
 
 
-@click.group()
-def cli():
-    pass
-
-
-@cli.command()
-@click.argument("notes_file", type=click.Path(exists=True))
 def punctuation(notes_file):
+    """
+    Tag cards that are identical when punctuation is removed.
+    :param notes_file:
+    :return:
+    """
     df = read_notes(notes_file)
-    df["clean"] = df.index.str.replace(f"[{string.punctuation}]", "")
     for text, row in df.iterrows():
         clean = df.loc[text]['clean']
         dups = df[df['clean'] == clean]
@@ -62,7 +58,7 @@ def fuzzy(notes_file):
                 name for name, score
                 # TODO: Test if setting limit=1 gets any speedup
                 in process.extract(card_text, cards, scorer=fuzz.ratio)
-                if score > 90
+                if score > 90  # TODO: Make configurable
             ]
         except KeyError:
             continue
@@ -86,16 +82,3 @@ def fuzzy(notes_file):
 def generate_tag_prefix():
     tag = uuid.UUID(int=RD.getrandbits(128))  # TODO Prefix tag with score for ordering
     return tag
-
-
-def read_notes(notes_file):
-    from bs4 import BeautifulSoup
-
-    df = pd.read_csv(notes_file, usecols=[0, 1], names=["id", "html"], sep='\t', error_bad_lines=False).drop_duplicates()
-    df["text"] = df['html'].apply(lambda x: BeautifulSoup(x, "html.parser").get_text())
-    df.set_index("id", inplace=True)
-    return df
-
-
-if __name__ == "__main__":
-    cli()
