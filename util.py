@@ -1,14 +1,17 @@
+import random
 import re
 import string
+import uuid
 
 import pandas as pd
 
 from bs4 import BeautifulSoup
 
-
 from nltk.corpus import stopwords
 
 STOPWORDS = set(stopwords.words("english"))
+RD = random.Random()
+RD.seed(0)
 
 
 def read_notes(notes_file):
@@ -18,10 +21,11 @@ def read_notes(notes_file):
     :return: pd.DataFrame
     """
     df = pd.read_csv(notes_file, names=["id", "html"], usecols=[0, 1], sep="\t")
+    df = pre_process(df)
     return df
 
 
-def pre_process(df):
+def pre_process(df: pd.DataFrame):
     df.drop_duplicates(inplace=True)
 
     # Create a column without HTML
@@ -34,6 +38,7 @@ def pre_process(df):
 
     # Remove punctuation and lower
     df["clean"] = df["clean"].str.replace(f"[{string.punctuation}]", " ")
+    df["clean"] = df["clean"].str.replace("\s+", " ").str.strip()
     df["clean"] = df["clean"].str.lower()
 
     df["set"] = df["clean"].apply(get_set)
@@ -60,3 +65,11 @@ def get_set(x):
         x = re.sub(p, repl, x)
         x = f"{x} {' '.join(matches.group(0))}"
     return x
+
+
+def generate_tag(prefix="near-dup", category=""):
+    # TODO Prefix tag with score for ordering
+    id_ = uuid.UUID(int=RD.getrandbits(128))
+    prefix = f"{prefix}::{category}::" if category else f"{prefix}::"
+    tag = f"{prefix}{id_}"
+    return tag

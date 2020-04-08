@@ -1,84 +1,71 @@
-import uuid
 import os
-import random
-import string
+
+import pandas as pd
 
 import click
 
 from fuzzywuzzy import fuzz, process
 
-from util import read_notes
-
-RD = random.Random()
-RD.seed(0)
+from util import read_notes, generate_tag
 
 
-def punctuation(notes_file):
-    """
-    Tag cards that are identical when punctuation is removed.
-    :param notes_file:
-    :return:
-    """
-    df = read_notes(notes_file)
-    for text, row in df.iterrows():
-        clean = df.loc[text]['clean']
-        dups = df[df['clean'] == clean]
-        if len(dups) > 1:
-            tag_prefix = generate_tag_prefix()
-            df.loc[dups.index, 'near-dup'] = f"near-dup::punctuation::{tag_prefix}"
-            x_dups = int(len(df[df['near-dup'].notnull()]) / 2)
-            print(f"found {x_dups:0} duplicates")
-    out_file = f"{notes_file.strip('text')}_punctuation.txt"
-    all_dups = df[df['near-dup'].notnull()].sort_values("clean")
-    all_dups.drop(columns="clean", inplace=True)
-    all_dups.to_csv(out_file)
-
-
-@cli.command()
-@click.argument("notes_file", type=click.Path(exists=True))
-def fuzzy(notes_file):
-
-    out_file = f"{notes_file.strip('.txt')}_fuzzy_dups.txt"
-    try:
-        os.remove(out_file)
-    except FileNotFoundError:
-        pass
-
-    df = read_notes(notes_file)
-    cards = set(row["text"] for ix, row in df.iterrows())
-    x = 0
-    match_counter = 0
+def simple_dups(df: pd.DataFrame) -> pd.DataFrame:
+    prefix = "dup"
     for ix, row in df.iterrows():
-        card_text = str(row["text"])
+        text = df.loc[ix]['set']
+        dups = df[df['set'] == text]
+        if len(dups) > 1:
+            tag = generate_tag(prefix=prefix, category="simple")
+            df.loc[dups.index, prefix] = tag
+    return df
+
+
+def fuzzy_dups(df: pd.DataFrame, threshold=90):
+
+    # Get all clean card text from the DataFrame and put it in a set
+    # We need this copy as a set so that we can quickly remove cards as they are found
+    # and only check for duplicates against the ever shrinking set
+    total_cards = len(df)
+    cards = set(row["clean"] for ix, row in df.iterrows())
+    x, match_counter = 0, 0
+    for ix, row in df.iterrows():
+        card_text = str(row["clean"])
         x += 1
         try:
+            # Remove card_text from cards first, otherwise it will always look like a duplicate.
             # If this fails, then `card_text` has already been seen
             cards.remove(card_text)
             matches = [
                 name for name, score
                 # TODO: Test if setting limit=1 gets any speedup
                 in process.extract(card_text, cards, scorer=fuzz.ratio)
-                if score > 90  # TODO: Make configurable
+                if score > threshold
             ]
         except KeyError:
             continue
+
         if matches:
             match_counter += 1
+            pfx = generate_tag()
+            # Get the indices of all matches in the DataFrame
+            match_locations = df["clean"].isin(matches + [card_text])
+            # Assign the same tag with a UUID to matches
+            df.loc[match_locations, "duplicate"] = f"duplicate::{pfx}"
+            matches_df = df[df['duplicate'].notnull()]
+            matches_df.to_csv(out_file, mode="a")
+
             print(f"Found {match_counter} potential duplicates so far")
-            tag_prefix = generate_tag_prefix()
-            df.loc[df["text"].isin(matches + [card_text]), "near_dup"] = f"near_dup::{tag_prefix}"
-            df[df['near_dup'].notnull()].to_csv(out_file)
+            print(f"Identified the following potential duplicates:")
             print(card_text)
             for match in matches:
-                print(match)
                 try:
+                    print(match)
                     cards.remove(match)
                 except KeyError:
                     continue
-            print(f"checked {x} cards out of {len(df)}")
-            print(f"checking against {len(cards)} cards now")
+            print(f"checked {x} cards out of {total_cards}")
+            print(f"Checking against {len(cards)} cards now")
 
 
-def generate_tag_prefix():
-    tag = uuid.UUID(int=RD.getrandbits(128))  # TODO Prefix tag with score for ordering
-    return tag
+def tag_dups(df: pd.DataFrame):
+    return df
