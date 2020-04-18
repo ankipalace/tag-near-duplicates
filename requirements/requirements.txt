@@ -1,4 +1,6 @@
 pandas
 fuzzywuzzy
-beautifulsoup
+beautifulsoup4
 click
+nltk
+python-Levenshtein
