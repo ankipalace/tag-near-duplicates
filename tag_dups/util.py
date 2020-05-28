@@ -77,9 +77,9 @@ def get_set(x):
     return x
 
 
-def generate_tag(prefix="duplicate", category=""):
-    # TODO Prefix tag with score for ordering
+def generate_tag(prefix="duplicate", category="", score=""):
     id_ = uuid.UUID(int=RD.getrandbits(128))
     prefix = f"{prefix}::{category}::" if category else f"{prefix}::"
+    prefix = f"{prefix}::{score}::" if score else prefix
     tag = f"{prefix}{id_}"
     return tag
