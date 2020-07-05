@@ -23,6 +23,9 @@ def read_notes(notes_file):
     :return: pd.DataFrame
     """
     df = pd.read_csv(notes_file, names=["id", "html"], usecols=[0, 1], sep="\t")
+    # TODO Perform validations:  make sure every note has a unique id
+    # Should we add unique ids ourselves instead of relying on the stupid add-on?
+    # Or read something directly from the database?
     return df
 
 
