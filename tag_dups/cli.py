@@ -11,7 +11,7 @@ def cli():
 
 @cli.command()
 @click.argument("df", type=click.Path(exists=True))
-@click.option("--o-duplicates", default="dups.txt", type=click.Path(exists=False))
+@click.option("--o-duplicates", type=click.Path(exists=False))
 @click.option("--threshold", default=90)
 @click.option("--append/--no-append", default=True)
 def fuzzy_dups(df, o_duplicates, threshold, append):
