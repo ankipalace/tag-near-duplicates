@@ -18,11 +18,11 @@ RD.seed(0)
 def read_notes(notes_file):
     """
     `notes_file` is expected to have been exported from Anki in plain text format, including HTML
-    and media references.
+    and media references.  The export format from the Anki dialogue is "Notes in Plain Text"
     :param notes_file:
     :return: pd.DataFrame
     """
-    df = pd.read_csv(notes_file, names=["id", "html"], usecols=[0, 1], sep="\t")
+    df = pd.read_csv(notes_file, names=["id", "html"], usecols=[0, 1], sep="\t", engine='python')
     # TODO Perform validations:  make sure every note has a unique id
     # Should we add unique ids ourselves instead of relying on the stupid add-on?
     # Or read something directly from the database?
@@ -31,6 +31,7 @@ def read_notes(notes_file):
 
 def pre_process(df: pd.DataFrame):
     df.drop_duplicates(inplace=True)
+    df.dropna(inplace=True)
 
     # Create a column without HTML
     df["text"] = df["html"].apply(lambda x: BeautifulSoup(x, "html.parser").get_text())
