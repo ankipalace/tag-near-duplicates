@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from .util import read_notes, pre_process
 import tag_dups.tag_duplicates as tag_duplicates
 
@@ -15,6 +17,8 @@ def cli():
 @click.option("--threshold", default=90)
 @click.option("--append/--no-append", default=True)
 def fuzzy_dups(df, o_duplicates, threshold, append):
+    if not o_duplicates:
+        o_duplicates = f"{Path(df).stem}_threshold_{threshold}.csv"
     df = read_notes(df)
     df = pre_process(df)
     df = tag_duplicates.simple_dups(df)
